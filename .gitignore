@@ -1,2 +1,4 @@
-Eyescan/cnn_eyescan/images/
-Eyescan/cnn_eyescan/predictions/
+cnn/images/*
+cnn/predictions/*
+cnn/checkpoints/*
+pupil_descent/edges.vsl
