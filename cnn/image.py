@@ -2,6 +2,9 @@
 
     Image class for training the network on.
 
+    ATTENTION: Currenty using images 1 - 1141 for training from video 3,
+    and holding out images 1142 - 1290 for training.
+
 '''
 
 from skimage.io import imread
@@ -12,14 +15,13 @@ import time
 import numpy as np
 from vessel import *
 import os
-import pylab as plt
+import ipdb
 
 from fake_images import generate_images
 
 random.seed(time.time())
 
-path = '/Users/oliver/Documents/Career/Michigan_Aerospace/Eyescan/cnn_eyescan/images/'
-img_number = np.arange(0, 645)
+path = '/home/ohill/nystagmus/images/'
 
 
 class Image:
@@ -46,42 +48,46 @@ class Image:
         # for the images.
         self.vessel = Vessel('eye_data.dat')
 
+
+        self.batch_size = 30
         self.images = []
         self.training = []
         self.testing = []
 
-        # If we are just testing, don't bother with the real images.
-        if self.fake:
-           self.images = generate_images(500)
+        new_data = []
 
-        # Otherwise go grab them.
-        else:
+        # Reformat the labels to match the resized images.
+        for point in self.vessel.data:
+            new_data.append((
+                    point[0],
+                    point[1] - 320,
+                    point[2] - 180,
+                    point[3]
+            ))
 
-           # Get all of the images in a list.
-           for num in img_number:
+        self.vessel.data = new_data
 
-               # Read all of the relevant images from our data.
-               image = imread(path + 'nystagmus_3_{:03d}.jpg'.format(num + 1))
+        # # If we are just testing, don't bother with the real images.
+        # if self.fake:
+        #    self.images = generate_images(500)
 
-               # Resize the image so that our network fits in memory...
-               image = np.array([i[320:960] for i in image[180:540]])
-               image = color.rgb2gray(image)
-               #image = np.atleast_3d(image)
+        # # Otherwise go grab them.
+        # else:
 
-               print(image.shape)
+        #    # Get all of the images in a list.
+        #    for num in img_number:
 
-               plt.imshow(image, cmap='gray')
-               plt.plot(self.vessel.data[num][1], self.vessel.data[num][2], marker='o', color='red')
+        #        # Read all of the relevant images from our data.
+        #        image = imread(path + 'nystagmus_3_{:03d}.jpg'.format(num + 1))
 
-               new_x = self.vessel.data[num][1] - 320
-               new_y = self.vessel.data[num][2] - 180
-
-               plt.plot(new_x, new_y, marker='o', color='blue')
-               plt.show()
+        #        # Resize the image so that our network fits in memory...
+        #        image = np.array([i[320:960] for i in image[180:540]])
+        #        image = color.rgb2gray(image)
+        #        image = np.atleast_3d(image)
 
 
-               # Add the image and its respective labels to our images array.
-               self.images.append((image, self.vessel.data[num][1:4]))
+        #        # Add the image and its respective labels to our images array.
+        #        self.images.append((image, self.vessel.data[num][1:4]))
 
 
 
@@ -93,22 +99,52 @@ class Image:
 
         '''
 
-        if self.fake:
-            self.images = generate_images(500)
-            return [i[0] for i in self.images], [i[1] for i in self.images]
+        # Get the numbers of the next batch to load into memory.
+        training_indices = random.sample(range(0, 1140), self.batch_size)
 
+        # Get rid of the old training examples.
+        del self.training[:]
 
-        # Randomly shuffle the image data.
-        shuff = self.images
-        random.shuffle(shuff)
+        for num in training_indices:
 
-        # Use the first 80% of the list as the training data.
-        self.training = [shuff[x] for x in range(int(len(shuff) * 0.15))]
+            image = imread(path + 'nystagmus_3_{:03d}.jpg'.format(num + 1))
 
-        # Use the last 20% of the list as the holdout data.
-        self.testing = [shuff[x] for x in range(int(len(shuff) * 0.8), len(shuff))]
+            # Reformat the images to keep only the data we need.
+            image = np.array([i[320:960] for i in image[180:540]])
+            image = color.rgb2gray(image)
+            image = np.atleast_3d(image)
+
+            self.training.append((image, self.vessel.data[num][1:4]))
 
         return [i[0] for i in self.training], [i[1] for i in self.training]
+
+
+    def clear_training_list(self):
+        '''
+
+            Clear the training data out of main memory.
+
+        '''
+
+        del self.training[:]
+
+
+        # if self.fake:
+        #     self.images = generate_images(500)
+        #     return [i[0] for i in self.images], [i[1] for i in self.images]
+
+
+#         # Randomly shuffle the image data.
+#         shuff = self.images
+#         random.shuffle(shuff)
+
+#         # Use the first 80% of the list as the training data.
+#         self.training = [shuff[x] for x in range(int(len(shuff) * 0.15))]
+
+#         # Use the last 20% of the list as the holdout data.
+#         self.testing = [shuff[x] for x in range(int(len(shuff) * 0.8), len(shuff))]
+
+#         return [i[0] for i in self.training], [i[1] for i in self.training]
 
 
 
@@ -119,4 +155,22 @@ class Image:
 
         '''
 
-        return [i[0] for i in self.testing], [i[1] for i in self.testing]
+        del self.testing[:]
+
+        testing_indices = random.sample(range(1141, 1289), self.batch_size)
+
+        for num in testing_indices:
+
+            image = imread(path + 'nystagmus_3_{:03d}.jpg'.format(num + 1))
+            image = np.array([i[320:960] for i in image[180:540]])
+            image = color.rgb2gray(image)
+            image = np.atleast_3d(image)
+
+            self.testing.append(image)
+
+        return self.testing, [self.vessel.data[i][1:4] for i in testing_indices], testing_indices
+
+
+
+
+

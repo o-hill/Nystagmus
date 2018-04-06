@@ -8,7 +8,6 @@
 import random
 import time
 import numpy as np
-import pylab as plt
 
 
 random.seed(time.time())
@@ -28,6 +27,7 @@ def distance(x_c, y_c, x_p, y_p):
     return np.sqrt(x + y)
 
 
+
 def create_circle():
     '''
 
@@ -35,8 +35,9 @@ def create_circle():
 
     '''
 
+    # Get the radius of the circle and find the bounds
+    # to keep the circle inside of the image.
     true_radius = random.randint(5, 20)
-
     upper_bound = 64 - true_radius
     lower_bound = true_radius
 
@@ -52,8 +53,8 @@ def create_circle():
     X, Y = np.meshgrid(x_list, y_list)
 
     image[(X - true_x) ** 2 + (Y - true_y) ** 2 <= true_radius ** 2] = 1
-    plt.imshow(image)
-    plt.show()
+
+    image = np.atleast_3d(image)
 
     return (image, (true_x, true_y, true_radius))
 
